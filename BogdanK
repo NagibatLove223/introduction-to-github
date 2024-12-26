@@ -1,0 +1,771 @@
+namespace PetMonitorApp
+{
+    public class DatabaseHelper
+    {
+        // Строка подключения к базе данных
+        private string connectionString;
+
+        // Конструктор, инициализирует строку подключения
+        public DatabaseHelper()
+        {
+            connectionString = @"Data Source=LAPTOP-GN904PFV\SQLEXPRESS;Initial Catalog=МониторингПитомцаDB;Integrated Security=True";
+        }
+
+        // Метод для добавления нового питомца в базу данных
+        public int ДобавитьПитомца(string имя, int возраст, string порода, double вес)
+        {
+            // Создаем подключение к базе данных и открываем его
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // SQL-запрос для вставки нового питомца
+                SqlCommand command = new SqlCommand("INSERT INTO ИнформацияОПитомце (Имя, Возраст, Порода, Вес) OUTPUT INSERTED.ИдентификаторПитомца VALUES (@Имя, @Возраст, @Порода, @Вес)", connection);
+                // Добавляем параметры к запросу
+                command.Parameters.AddWithValue("@Имя", имя);
+                command.Parameters.AddWithValue("@Возраст", возраст);
+                command.Parameters.AddWithValue("@Порода", порода);
+                command.Parameters.AddWithValue("@Вес", вес);
+
+                // Выполняем запрос и получаем идентификатор добавленного питомца
+                int идентификаторПитомца = (int)command.ExecuteScalar();
+                return идентификаторПитомца; // Возвращаем идентификатор питомца
+            }
+        }
+
+        // Метод для получения информации о всех питомцах
+        public DataTable ПолучитьИнформациюОПитомце()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для получения всех данных о питомцах
+                SqlCommand command = new SqlCommand("SELECT ИдентификаторПитомца, Имя, Возраст, Порода, Вес FROM ИнформацияОПитомце", connection);
+
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                DataTable petInfoTable = new DataTable();
+
+                // Заполняем таблицу результатами запроса
+                adapter.Fill(petInfoTable);
+                return petInfoTable; // Возвращаем таблицу с данными
+            }
+        }
+
+        // Метод для получения питомца по имени
+        public DataTable ПолучитьПитомцаПоИмени(string имя)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для поиска питомца по имени
+                SqlCommand command = new SqlCommand("SELECT * FROM ИнформацияОПитомце WHERE Имя = @Имя", connection);
+                command.Parameters.AddWithValue("@Имя", имя);
+
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                DataTable petInfo = new DataTable();
+                adapter.Fill(petInfo); // Заполняем таблицу результатами запроса
+
+                return petInfo; // Возвращаем таблицу с найденными питомцами
+            }
+        }
+
+        // Метод для добавления записи о весе питомца
+        public void ДобавитьЗаписьОВесе(int идентификаторПитомца, double вес, DateTime дата)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для добавления записи о весе питомца
+                string query = "INSERT INTO ИсторияВесов (ИдентификаторПитомца, Вес, Дата) VALUES (@ИдентификаторПитомца, @Вес, @Дата)";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца);
+                command.Parameters.AddWithValue("@Вес", вес);
+                command.Parameters.AddWithValue("@Дата", дата);
+
+                command.ExecuteNonQuery(); // Выполняем запрос на добавление записи
+            }
+        }
+
+        // Метод для получения истории веса всех питомцев
+        public DataTable ПолучитьИсториюВеса()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для получения всей истории веса
+                string query = "SELECT * FROM ИсторияВесов";
+                SqlCommand command = new SqlCommand(query, connection);
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                DataTable историяВесов = new DataTable();
+                adapter.Fill(историяВесов); // Заполняем таблицу результатами запроса
+                return историяВесов; // Возвращаем таблицу с историей веса
+            }
+        }
+
+        // Метод для добавления записи о состоянии питомца (болезни, здоровье)
+        public void ДобавитьСостояние(int идентификаторПитомца, DateTime дата, string состояние, string описание)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для добавления состояния питомца
+                string query = "INSERT INTO Состояние (ИдентификаторПитомца, Дата, Состояние, Описание) VALUES (@ИдентификаторПитомца, @Дата, @Состояние, @Описание)";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца);
+                command.Parameters.AddWithValue("@Дата", дата);
+                command.Parameters.AddWithValue("@Состояние", состояние);
+                command.Parameters.AddWithValue("@Описание", описание ?? (object)DBNull.Value); // Если описание пустое, то передаем DBNull
+
+                command.ExecuteNonQuery(); // Выполняем запрос на добавление записи о состоянии питомца
+            }
+        }
+
+        // Метод для получения всех записей о состоянии питомцев
+        public DataTable ПолучитьСостПэт()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для получения всех записей о состоянии питомцев
+                string query = "SELECT * FROM Состояние";
+                SqlCommand command = new SqlCommand(query, connection);
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                DataTable Состояние = new DataTable();
+                adapter.Fill(Состояние); // Заполняем таблицу результатами запроса
+                return Состояние; // Возвращаем таблицу с состоянием питомцев
+            }
+        }
+        public void ДобКормл(int идентификаторПитомца, double количество, double времякормления)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для добавления состояния питомца
+                string query = "INSERT INTO ИсторияКормлений (ИдентификаторПитомца, Количество, ВремяКормления) VALUES (@ИдентификаторПитомца, @Количество, @ВремяКормления)";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца);
+                command.Parameters.AddWithValue("@Количество", количество);
+                command.Parameters.AddWithValue("@ВремяКормления", времякормления);
+                 
+
+                command.ExecuteNonQuery(); // Выполняем запрос на добавление записи о состоянии питомца
+            }
+        }
+        public DataTable ПолучитьКормл()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                // SQL-запрос для получения всех записей о состоянии питомцев
+                string query = "SELECT * FROM ИсторияКормлений";
+                SqlCommand command = new SqlCommand(query, connection);
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                DataTable ИсторияКормлений = new DataTable();
+                adapter.Fill(ИсторияКормлений); // Заполняем таблицу результатами запроса
+                return ИсторияКормлений; // Возвращаем таблицу с состоянием питомцев
+            }
+        }
+        public double РассчитатьСреднийВес(int идентификаторПитомца)
+        {
+            double среднийВес = 0;
+            int количествоЗаписей = 0;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                // SQL-запрос для получения всех данных о весе питомца
+                string query = "SELECT Вес FROM ИсторияВесов WHERE ИдентификаторПитомца = @ИдентификаторПитомца";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца); // Параметр запроса
+
+                SqlDataReader reader = command.ExecuteReader();
+
+                // Перебираем все записи и суммируем веса
+                while (reader.Read())
+                {
+                    if (!reader.IsDBNull(0)) // Проверка на пустые значения
+                    {
+                        double вес = Convert.ToDouble(reader[0]); // Преобразуем значение в double
+                        среднийВес += вес; // Суммируем вес
+                        количествоЗаписей++;
+                    }
+                }
+
+                // Если были записи, то вычисляем среднее
+                if (количествоЗаписей > 0)
+                {
+                    среднийВес /= количествоЗаписей;
+                }
+                else
+                {
+                    среднийВес = 0; // Если нет записей, возвращаем 0
+                }
+            }
+
+            return среднийВес; // Возвращаем средний вес
+        }
+        public DataTable ПолучитьИсториюВеса(int идентификаторПитомца)
+        {
+            DataTable весИстория = new DataTable();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT Дата, Вес FROM ИсторияВесов WHERE ИдентификаторПитомца = @ИдентификаторПитомца ORDER BY Дата";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца);
+
+                SqlDataAdapter adapter = new SqlDataAdapter(command);
+                adapter.Fill(весИстория);
+            }
+
+            return весИстория;
+        }
+    }
+}
+    public partial class AddPetForm : Form
+    {
+        // Конструктор формы
+        public AddPetForm()
+        {
+            InitializeComponent();
+        }
+
+        // Обработчик нажатия кнопки "Добавить питомца"
+        private void button1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Создаем объект для работы с базой данных
+                DatabaseHelper dbHelper = new DatabaseHelper();
+
+                // Получаем данные из текстовых полей
+                string имя = txtName.Text; // Имя питомца
+                int возраст = int.Parse(txtAge.Text); // Возраст питомца
+                string порода = txtBreed.Text; // Порода питомца
+                double вес = double.Parse(txtWeight.Text); // Вес питомца
+
+                // Добавляем питомца в базу данных и получаем его идентификатор
+                int идентификаторПитомца = dbHelper.ДобавитьПитомца(имя, возраст, порода, вес);
+
+                // Выводим сообщение с идентификатором питомца
+                MessageBox.Show($"Питомец добавлен! Идентификатор: {идентификаторПитомца}");
+
+                // Закрываем форму добавления питомца
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                // Обработка возможных ошибок, например, если текст в полях не является числом
+                MessageBox.Show($"Ошибка: {ex.Message}");
+            }
+        }
+
+        // Обработчик изменения текста в текстовом поле (в данном случае не используется, можно удалить)
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            // Этот метод не используется, можно удалить его, если не планируется использовать в будущем
+        }
+
+        // Обработчик изменения выбранного элемента в comboBox для единицы измерения возраста
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Получаем выбранную единицу измерения возраста
+            string ageUnit = comboBox1.SelectedItem.ToString();
+
+            // Проверяем, какая единица измерения была выбрана
+            if (ageUnit == "Годы")
+            {
+                // Переводим возраст в года (если нужно преобразовать в месяцы, это можно сделать позже в button1_Click)
+                int возраст = int.Parse(txtAge.Text);
+            }
+            else if (ageUnit == "Месяцы")
+            {
+                // Переводим возраст в месяцы
+                int возраст = int.Parse(txtAge.Text) * 12; // Множим на 12, чтобы перевести в месяцы
+            }
+        }
+
+        // Обработчик нажатия кнопки "Назад"
+        private void button2_Click(object sender, EventArgs e)
+        {
+            // Создаем объект формы, на которую хотим перейти
+            Form3 form3 = new Form3();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Показываем форму 3 как модальное окно
+            form3.ShowDialog();
+
+            // После того как форма 3 закроется, показываем текущую форму
+            this.Show();
+        }
+    }
+}
+    public partial class HPpet : Form
+    {
+        // Конструктор формы для добавления состояния питомца
+        public HPpet()
+        {
+            InitializeComponent(); // Инициализация всех компонентов на форме
+        }
+
+        // Обработчик события изменения текста в текстовом поле (пока не используется)
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            // Этот метод можно использовать для обработки изменений текста в текстовых полях
+        }
+
+        // Обработчик нажатия кнопки для добавления состояния питомца
+        private void button1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Получаем идентификатор питомца из текстового поля и преобразуем его в целое число
+                int идентификаторПитомца = int.Parse(textBox1.Text);
+
+                // Получаем выбранную дату из компонента DateTimePicker
+                DateTime дата = dateTimePicker1.Value;
+
+                // Получаем состояние и описание из текстовых полей
+                string состояние = string.Copy(textBox3.Text);
+                string описание = string.Copy(textBox4.Text);
+
+                // Создаем объект для взаимодействия с базой данных
+                DatabaseHelper dbHelper = new DatabaseHelper();
+
+                // Добавляем состояние питомца в базу данных
+                dbHelper.ДобавитьСостояние(идентификаторПитомца, дата, состояние, описание);
+
+                // Выводим сообщение о том, что запись добавлена
+                MessageBox.Show("Запись добавлен.");
+
+                // Обновляем DataGridView, чтобы отобразить актуальные данные о состоянии питомцев
+                dataGridView1.DataSource = dbHelper.ПолучитьСостПэт();
+            }
+            catch (Exception ex)
+            {
+                // В случае ошибки при загрузке данных выводим сообщение с текстом ошибки
+                MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}");
+            }
+        }
+
+        // Обработчик события загрузки формы
+        private void HPpet_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                // Создаем объект для работы с базой данных
+                DatabaseHelper dbHelper = new DatabaseHelper();
+
+                // Получаем все данные о состоянии питомцев из базы данных
+                DataTable Состояние = dbHelper.ПолучитьСостПэт();
+
+                // Устанавливаем полученную информацию как источник данных для DataGridView
+                dataGridView1.DataSource = Состояние;
+            }
+            catch (Exception ex)
+            {
+                // В случае ошибки при загрузке данных выводим сообщение с текстом ошибки
+                MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}");
+            }
+        }
+
+        // Обработчик кнопки "Назад" для возвращения на главную форму
+        private void button2_Click(object sender, EventArgs e)
+        {
+            // Создаем объект для возвращения на главную форму (Form3)
+            Form3 form3 = new Form3();
+
+            // Скрываем текущую форму и показываем Form3
+            this.Hide();
+            form3.ShowDialog();
+
+            // После закрытия Form3 показываем текущую форму
+            this.Show();
+        }
+    }
+}
+public partial class Form3 : Form
+    {
+        // Конструктор формы, инициализация компонентов
+        public Form3()
+        {
+            InitializeComponent();
+        }
+
+        // Обработчик события для кнопки "Добавить питомца"
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // Создаем экземпляр формы для добавления питомца
+            AddPetForm addPetForm = new AddPetForm();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму добавления питомца как модальное окно
+            addPetForm.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+
+        // Обработчик события для кнопки "Просмотр питомцев"
+        private void button2_Click(object sender, EventArgs e)
+        {
+            // Создаем экземпляр формы для просмотра питомцев
+            ViewPetForm viewForm = new ViewPetForm();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму просмотра питомцев как модальное окно
+            viewForm.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+
+        // Обработчик события для кнопки "Добавить вес"
+        private void button3_Click(object sender, EventArgs e)
+        {
+            // Создаем экземпляр формы для добавления веса питомца
+            AddWeightForm addWeightForm = new AddWeightForm();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму добавления веса как модальное окно
+            addWeightForm.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+
+        // Обработчик события для кнопки "Состояние питомца"
+        private void button5_Click(object sender, EventArgs e)
+        {
+            // Создаем экземпляр формы для просмотра состояния питомца
+            HPpet hPpet = new HPpet();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму состояния питомца как модальное окно
+            hPpet.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+
+        private void Form3_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            Form4 form4 = new Form4();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму состояния питомца как модальное окно
+            form4.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            int petId = 1; // Здесь вы можете указать фактический идентификатор питомца
+            WeightChartForm weightChartForm = new WeightChartForm(petId);
+
+            this.Hide();
+            weightChartForm.ShowDialog();
+            this.Show();
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            Form6 form6 = new Form6();
+
+            // Скрываем текущую форму
+            this.Hide();
+
+            // Открываем форму состояния питомца как модальное окно
+            form6.ShowDialog();
+
+            // После закрытия формы показываем текущую форму снова
+            this.Show();
+        }
+    }
+}
+amespace PetMonitorApp
+{
+    public partial class Form4 : Form
+    {
+        public Form4()
+        {
+            InitializeComponent();
+        }
+
+        private void Form4_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                DatabaseHelper dbHelper = new DatabaseHelper();
+                DataTable ИсторияКормлений = dbHelper.ПолучитьКормл();
+                dataGridView1.DataSource = ИсторияКормлений;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}");
+
+            }
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int идентификаторПитомца = int.Parse(textBox1.Text);
+                double количество = double.Parse(textBox2.Text);
+                double времякормления = double.Parse(textBox3.Text);
+                DatabaseHelper dbHelper = new DatabaseHelper();
+                dbHelper.ДобКормл(идентификаторПитомца, количество,времякормления );
+                MessageBox.Show("История добавлен.");
+                dataGridView1.DataSource = dbHelper.ПолучитьКормл();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}");
+
+            } 
+
+        }
+
+        private void Меню_Click(object sender, EventArgs e)
+        {
+            Form3 form3 = new Form3();
+
+            // Скрываем текущую форму и показываем Form3
+            this.Hide();
+            form3.ShowDialog();
+
+            // После закрытия Form3 показываем текущую форму
+            this.Show();
+        }
+
+        private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
+    }       
+}
+    public partial class WeightChartForm : Form
+    {
+        
+        public WeightChartForm(int идентификаторПитомца)
+        {
+            InitializeComponent();
+            if (идентификаторПитомца <= 0)
+            {
+                throw new ArgumentException("Идентификатор питомца должен быть больше 0.", nameof(идентификаторПитомца));
+            }
+            
+
+        }
+        private void LoadWeightChart(int идентификаторПитомца)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection("your_connection_string"))
+                {
+                    connection.Open();
+                    string query = "SELECT Дата, Вес FROM ИсторияВесов WHERE ИдентификаторПитомца = @ИдентификаторПитомца";
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@ИдентификаторПитомца", идентификаторПитомца);
+
+                    SqlDataReader reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        // Проверка на NULL значения перед извлечением данных
+                        if (!reader.IsDBNull(0) && !reader.IsDBNull(1))
+                        {
+                            DateTime дата = reader.GetDateTime(0); // Убедитесь, что колонка 0 — это DateTime
+                            double вес = reader.GetDouble(1);  // Убедитесь, что колонка 1 — это Double
+
+                            // Логируем значения для отладки
+                            Console.WriteLine($"Дата: {дата}, Вес: {вес}");
+
+                            // Добавляем точку на график
+                            chart1.Series["Вес"].Points.AddXY(дата, вес);
+                        }
+                        else
+                        {
+                            Console.WriteLine("В таблице есть записи с пустыми значениями для Дата или Вес.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}");
+            }
+        }
+
+
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void WeightChartForm_Load(object sender, EventArgs e)
+        {
+            DatabaseHelper dbHelper = new DatabaseHelper();
+            int petId = 1; // Для тестирования — можно передавать через параметры
+            DataTable weightHistory = dbHelper.ПолучитьИсториюВеса(petId);
+
+            if (weightHistory.Rows.Count > 0)
+            {
+                chart1.Series.Clear();
+                var series = new System.Windows.Forms.DataVisualization.Charting.Series
+                {
+                    Name = "Вес",
+                    ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line
+                };
+
+                chart1.Series.Add(series);
+
+                foreach (DataRow row in weightHistory.Rows)
+                {
+                    DateTime date = Convert.ToDateTime(row["Дата"]);
+                    double weight = Convert.ToDouble(row["Вес"]);
+                    series.Points.AddXY(date, weight);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Нет данных для отображения графика.");
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int идентификаторПитомца = int.Parse(textPetId.Text);
+
+                DatabaseHelper dbHelper = new DatabaseHelper();
+                DataTable весаПитомца = dbHelper.ПолучитьИсториюВеса(идентификаторПитомца);
+
+                if (весаПитомца.Rows.Count > 0)
+                {
+                    // Очистка предыдущих данных графика
+                    chart1.Series.Clear();
+
+                    // Добавляем серию на график
+                    var series = new System.Windows.Forms.DataVisualization.Charting.Series
+                    {
+                        Name = "Вес",
+                        Color = System.Drawing.Color.Blue,
+                        ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line // Тип графика
+                    };
+
+                    chart1.Series.Add(series);
+
+                    // Добавляем точки данных из таблицы
+                    foreach (DataRow row in весаПитомца.Rows)
+                    {
+                        // Предполагается, что таблица содержит "Дата" и "Вес"
+                        DateTime дата = Convert.ToDateTime(row["Дата"]);
+                        double вес = Convert.ToDouble(row["Вес"]);
+
+                        series.Points.AddXY(дата, вес); // Добавляем точку на график
+                    }
+
+                    // Настраиваем оси графика
+                    chart1.ChartAreas[0].AxisX.Title = "Дата";
+                    chart1.ChartAreas[0].AxisY.Title = "Вес (кг)";
+                }
+                else
+                {
+                    MessageBox.Show("Нет данных о весе для указанного питомца.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при построении графика: {ex.Message}");
+            }
+        }
+    }
+}
+public partial class Form6 : Form
+{
+    public Form6()
+    {
+        InitializeComponent();
+    }
+
+    private void btnCalculate_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            // Считываем идентификатор питомца из текстового поля
+            int идентификаторПитомца = int.Parse(txtPetId.Text);
+
+            DatabaseHelper dbHelper = new DatabaseHelper();
+
+            // Рассчитываем средний вес
+            double среднийВес = dbHelper.РассчитатьСреднийВес(идентификаторПитомца);
+
+            // Выводим результат на экран
+            MessageBox.Show($"Средний вес питомца: {среднийВес:F2} кг", "Результат", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (FormatException)
+        {
+            // Сообщаем об ошибке, если введено некорректное значение
+            MessageBox.Show("Пожалуйста, введите корректный числовой идентификатор питомца.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        catch (Exception ex)
+        {
+            // Обрабатываем все прочие ошибки
+            MessageBox.Show($"Ошибка при расчете: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+    }
+       
+
+    private void button1_Click(object sender, EventArgs e)
+    {
+        this.Close();
+    }
+
+    private void Form6_Load(object sender, EventArgs e)
+    {
+        DatabaseHelper dbHelper = new DatabaseHelper();
+        DataTable среднийВес = dbHelper.ПолучитьИсториюВеса();
+
+        // Обновляем текст метки
+        if (среднийВес.Rows.Count > 0)
+        {
+            label1.Text = "Средний вес успешно загружен!";
+        }
+        else
+        {
+            label1.Text = "Нет данных для отображения.";
+        }
+
+    }
+}
